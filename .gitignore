@@ -1,2 +1,4 @@
 LTM/settings.py
 media/uploads
+venv
+.idea
