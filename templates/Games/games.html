@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}
+    Games
+{% endblock title %}
+{% block main %}
+    <div class="container h-100 d-inline-block  mx-auto d-flex flex-column justify-content-center align-items-center text-center position-relative"
+         data-aos="zoom-out">
+        <div>
+            <select onchange="games(this);" class="form-select" aria-label="Default select example">
+                <option selected>Open this select game with user.</option>
+                {% for user in users %}
+                    <option value="{{ user.id }}">{{ user.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <table class="table table-hover bg-light">
+            <thead>
+            <tr class="text-danger">
+                <th>Game</th>
+                <th>Author</th>
+                <th>Rule</th>
+                <th>Status</th>
+                <th style="width: 10%">Play</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for game in games %}
+                <tr>
+                    <td>{{ game.name }}</td>
+                    <td>{{ game.author }}</td>
+                    <td><a href="/media/{{ game.rule }}"><i class="fa fa-download"></i></a></td>
+                    <td>{% if game.status == 0 %}Off{% else %}On{% endif %}</td>
+                    <td>
+                        {% if game.status == 1 %}
+                        <button type="button" style="float: right" class="btn btn-primary float-right"
+                                data-bs-toggle="modal"
+                                onclick="play({{ game.id}},'{{ game.name }}')"
+                                data-bs-target="#staticBackdrop">
+                            Create Game
+                        </button>
+                        {% else %}
+                            <button type="button" style="float: right" class="btn float-right btn btn-danger">
+                                Create Game
+                            </button>
+                        {% endif %}
+                    </td>
+
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="modal fade" id="staticBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+         aria-labelledby="staticBackdropLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="staticBackdropLabel">Create Game</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+
+                </div>
+                <div class="modal-footer">
+                    <div>Game: <b id="namegame"></b></div>
+                    <form class=" mx-auto" action="/games/matchs/" method="post" id="createGame"
+                          enctype="multipart/form-data">
+                        {% load crispy_forms_tags %}
+                        {% csrf_token %}
+                       <input type="hidden" name="game" id="id_game" value="">
+                        <div id="div_id_id_play1" class="control-group"><label for="id_play1"
+                                                                               class="control-label requiredField">
+                            ID 1<span class="asteriskField">*</span> </label>
+                            <div class="controls w-100">{{ form.id_play1|linebreaks }}</div>
+                        </div>
+                        <div id="div_id_id_play2" class="control-group"><label for="id_play2"
+                                                                               class="control-label requiredField">
+                            ID 2<span class="asteriskField">*</span> </label>
+                            <div class="controls w-100">{{ form.id_play2|linebreaks }}</div>
+                        </div>
+                        <div id="div_id_password" class="control-group"><label for="password"
+                                                                               class="control-label requiredField">
+                            password<span class="asteriskField">*</span> </label>
+                            <div class="controls w-100">{{ form.password|linebreaks }}</div>
+                        </div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <input type="submit" id="submit" data-bs-dismiss="modal" class="btn btn-primary"
+                               value="New Match">
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function play(id,name) {
+            document.getElementById("namegame").innerText = name;
+            document.getElementById("id_game").value = id;
+
+        };
+
+        function games(obj) {
+            location = "/games/?id=" + obj.value;
+        }
+    </script>
+{% endblock main %}

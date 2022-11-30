@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}
+    Notification
+{% endblock title %}
+{% block main %}
+    <div class="container h-100 d-inline-block  mx-auto d-flex flex-column justify-content-center align-items-center text-center position-relative"
+         data-aos="zoom-out">
+        <table class="table">
+            <thead>
+            <tr>
+                <th scope="col">#</th>
+                <th scope="col">Title</th>
+                <th scope="col" style="width: 10%">IP</th>
+                <th scope="col" style="width: 40%">Text</th>
+
+                <th scope="col" style="width: 100px">Port</th>
+                <th scope="col" style="width: 100px">Password</th>
+                <th scope="col"></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for noti in notis %}
+                <tr>
+                    <th scope="row">{{ noti.id }}</th>
+                    <td>{{ noti.title }}</td>
+                    <td>{{ noti.ip }}</td>
+                    <td>{{ noti.content}}</td>
+                    <td>{{ noti.port }}</td>
+                    <td>{{ noti.passwd }}</td>
+                    <td onclick="Delete(this.parentElement)"><button>Delete</button></td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+<script>
+function Delete(obj){
+    location="/games/delete_noti/"+obj.firstElementChild.textContent
+}
+</script>
+{% endblock main %}
