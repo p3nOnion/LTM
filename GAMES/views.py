@@ -2,8 +2,7 @@ import websockets
 import asyncio
 from django.core.paginator import Paginator
 from django.shortcuts import render, redirect
-from django.http.response import FileResponse
-from django.http import HttpResponseForbidden
+from asgiref.sync import sync_to_async, async_to_sync
 from datetime import datetime, timedelta, timezone, tzinfo
 from django.contrib import messages as mmesg
 from pwn import *
@@ -80,8 +79,8 @@ def match_home(request):
                 return redirect("game:match_home")
             password = form.cleaned_data.get('password')
             g = Game.objects.filter(id=game).first()
-            if g.is_active==False:
-                return  redirect("game:match_home")
+            if g.is_active == False:
+                return redirect("game:match_home")
             data = {
                 "action": 1,
                 "id1": id1,
@@ -89,48 +88,54 @@ def match_home(request):
                 "passwd": password
             }
             if g.ip[:5] == "ws://":
-                start_time =int(time.time())
-                async def connect():
-                    async with websockets.connect(g.ip + ":" + str(g.port)) as websocket:
-                        await websocket.send(json.dumps(data))
-                        msg = await websocket.recv()# dang co bug o day
-                        print(msg)
-                        try:
-                            message = msg['result']
+                try:
+                    async def connect():
+                        uri = g.ip + ":" + str(g.port)
+                        async with websockets.connect(uri) as websocket:
+                            async def send_hello():
+                                # await asyncio.sleep(3)
+                                await websocket.send(json.dumps(data))
+                                # msg = (await json.loads(websocket.recv()))
+                                # print(msg)
+
+                            task = asyncio.create_task(send_hello())
+                            msg = (await websocket.recv())
+                            msg = json.loads(msg)
+                            print(msg)
+                            result = msg['result']
                             ip_connect = msg['ip']
                             port_connect = msg['port']
                             path_connect = msg['path']
-                            print(message)
-                            if message == 1:
-                                Match(game_id=int(game), id_play1=id1, id_play2=id2, password=password,
-                                      date_create=datetime.now()).save()
+
+                            if result == 1:
+                                sync_to_async(Match(game_id=int(game), id_play1=id1, id_play2=id2, password=password,
+                                                    date_create=datetime.now()).save())
                                 mmesg.success(request, "Create a successful game")
-                                Notification(title=g.name, user_id=id1, ip=ip_connect, port=port_connect,
-                                             content="connect game %s with id match=%s, ip=%s, port=%s, path=%s" % (
-                                                 g.name,
-                                                 Match.objects.filter(game_id=int(game), id_play1=id1, id_play2=id2,
-                                                                      password=password).first().id, ip_connect,
-                                                 port_connect, path_connect))
-                                Notification(title=g.name, user_id=id2, ip=ip_connect, port=port_connect,
-                                             content="connect game %s with id match=%s, ip=%s, port=%s, path=%s" % (
-                                                 g.name,
-                                                 Match.objects.filter(game_id=int(game), id_play1=id1, id_play2=id2,
-                                                                      password=password).first().id, ip_connect,
-                                                 port_connect, path_connect))
+                                sync_to_async(
+                                    Notification(title=g.name, user_id_id=id1, ip=ip_connect, port=port_connect,
+                                                 content="connect game %s with id match=%s, ip=%s, port=%s, path=%s" % (
+                                                     g.name,
+                                                     Match.objects.filter(game_id=int(game), id_play1=id1, id_play2=id2,
+                                                                          password=password).first().id, ip_connect,
+                                                     port_connect, path_connect)).save())
+                                sync_to_async(
+                                    Notification(title=g.name, user_id_id=id2, ip=ip_connect, port=port_connect,
+                                                 content="connect game %s with id match=%s, ip=%s, port=%s, path=%s" % (
+                                                     g.name,
+                                                     Match.objects.filter(game_id=int(game), id_play1=id1, id_play2=id2,
+                                                                          password=password).first().id, ip_connect,
+                                                     port_connect, path_connect)).save())
+                            await task
 
-                        except:
-                            mmesg.error(request, "Can't create match")
-                            # if int(time.time()) - start_time > 5:
-                            websocket.close()
-                        websocket.close()
+                    asyncio.run(connect())
 
-                async def main():
-                    MAX_TIMEOUT = 20
-                    try:
-                        await asyncio.wait_for(connect(), timeout=MAX_TIMEOUT)
-                    except:
-                        print('The task was cancelled due to a timeout')
-                asyncio.run(main())
+
+                except Exception as e:
+                    print(e)
+                    pass
+
+
+
             else:
                 try:
                     req = remote(g.ip, g.port)

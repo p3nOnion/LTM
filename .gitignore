@@ -1,4 +1,3 @@
-LTM/settings.py
-media/uploads
+media/uploads/*
 venv
 .idea
