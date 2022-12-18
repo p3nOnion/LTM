@@ -71,9 +71,9 @@
                         <h4 style="color: red">Match <em>Now</em></h4>
                     </div>
                     {% for match in page_obj %}
-                        <div class="col-lg-4 col-sm-6 " style="min-width: 400px">
+                        <div class="col-lg-4 col-sm-6 match" style="min-width: 400px">
                             <div class="item " style="background-color: #344D67">
-                                <h5>Match ID: {{ match.id }}</h5>
+                                <a href="/games/matchs/{{match.id}}"><h5>Match ID: {{ match.id }}</h5></a>
                                 <h4 style="color: #e54d07; text-transform:uppercase">{{ match.game.name }}<br><span>
                                     {% if match.status == 0 %}
                                         waiting

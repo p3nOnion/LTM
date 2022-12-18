@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}
+Home
+{% endblock title %}
+{% block main %}
+<div class="container text-center">
+    <div class="most-popular" style="background-color: #bebebf">
+        <div class="row">
+                <div class="item margin-top" style="background-color: #344D67">
+                    <a href="/games/matchs/{{match.id}}">
+                        <h5>Match ID: </h5><h5 id="match_id">{{ match.id }}</h5>
+                    </a>
+                    <h4 style="color: #e54d07; text-transform:uppercase" >{{ match.game.name }}<br><span id="status">
+                            {% if match.status == 0 %}
+                            waiting
+                            {% elif match.status == 1 %}
+                            running
+                            {% else %}
+                            end
+                            {% endif %}
+                        </span></h4>
+                    <ul style="width:30%">
+                        <li style="text-align: left;"><i class="fa " style=" color: red" id="score_id1">{{match.score_play1}}</i></li>
+                        <li style="text-align: left;"><i class="fa " style=" color: red" id="score_id2">{{ match.score_play2 }}</i>
+                        </li>
+                    </ul>
+                    <ul style="width:30%">
+                        <li style="text-align: left"><i class="fa ">UID&nbsp;1&nbsp;: {{ match.id_play1 }}&nbsp;</i>
+                        </li>
+                        <li style="text-align: left"><i class="fa ">UID
+                                2&nbsp;: {{ match.id_play2 }}&nbsp;</i>
+                        </li>
+                    </ul>
+
+                </div>
+
+        </div>
+    </div>
+</div>
+<script>
+    const roomName = document.getElementById("match_id").textContent;
+    console.log(roomName)
+
+    const chatSocket = new WebSocket(
+        'ws://'
+        + window.location.host
+        + '/ws/channels/'
+        + roomName
+        + '/'
+    );
+
+    // onmessage - An event listener to be called when a message is received from the server.
+    chatSocket.onmessage = function(e) {
+        // JSON.parse() converts the JSON object back into the original object,
+        // then examine and act upon its contents.
+        const data = JSON.parse(e.data);
+        document.querySelector('#score_id1').innerHTML = (data.id1);
+        document.querySelector('#score_id2').innerHTML = (data.id2);
+        if(data.status==0){
+            document.querySelector('#status').innerHTML = "WAITING";
+        }else if(data.status==1){
+            document.querySelector('#status').innerHTML = "RUNNING";
+        }
+        else if(data.status==2){
+            document.querySelector('#status').innerHTML = "END";
+        }
+
+    }; 
+
+    // onclose - An event listener to be called when the connection is closed.
+
+    function autorun(e) {
+
+        // Send the msg object as a JSON-formatted string.
+        chatSocket.send(JSON.stringify({
+            'message': "update"
+        }));
+            
+        // Blank the text input element, ready to receive the next line of text from the user.
+    };
+    var myVar = setInterval(autorun, 400);
+</script>
+
+{% endblock main %}

@@ -21,14 +21,14 @@ import GAMES.views as gameviews
 import Accounts.views as accountviews
 app_name = "ltm"
 urlpatterns = [
-                  path('admin/', admin.site.urls),
-                  path('home/',gameviews.home,name='home' ),
-                  path('', gameviews.index, name='home'),
-                  path('games/', include('GAMES.urls')),
-                  path('accounts/', include('Accounts.urls')),
-                  path('channels/', include('Channels.urls')),
-                  path('notification/', gameviews.notification),
-              ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    path('admin/', admin.site.urls),
+    path('home/', gameviews.home, name='home'),
+    path('', gameviews.index, name='home'),
+    path('games/', include('GAMES.urls')),
+    path('accounts/', include('Accounts.urls')),
+    path('channels/', include('Channels.urls')),
+    path('notification/', gameviews.notification),
+] + static("/media/", document_root="/home/copv/git/LTM/media/")
 
 admin.site.site_header = "CYBORG Admin"
 admin.site.site_title = "CTF"

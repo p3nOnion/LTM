@@ -6,6 +6,7 @@ from asgiref.sync import sync_to_async, async_to_sync
 from datetime import datetime, timedelta, timezone, tzinfo
 from django.contrib import messages as mmesg
 from pwn import *
+import random
 import json
 
 # Create your views here.
@@ -29,7 +30,8 @@ def games(request):
             ip = form.cleaned_data.get("ip")
             port = form.cleaned_data.get("port")
             rule = form.cleaned_data.get("rule")
-            game = Game(name=name, author_id=request.user.id, ip=ip, port=port, rule=rule)
+            game = Game(name=name, author_id=request.user.id,
+                        ip=ip, port=port, rule=rule)
             game.save()
         return redirect("accounts:profile")
     try:
@@ -41,19 +43,12 @@ def games(request):
     return render(request, 'Games/games.html', {"games": games, "users": users, "form": form})
 
 
-# def create_match(request):
-#     if request.method == "POST":
-#         form = MatchForm(request.POST)
-#         if form.is_valid():
-#             game = form.cleaned_data.get('game')
-#             print(game)
-#             id1 = form.cleaned_data.get('id_play1')
-#             id2 = form.cleaned_data.get('id_play2')
-#             password = form.cleaned_data.get('password')
-#             Match(game=game, id_play1=id1, id_play2=id2, password=password, date_create=timezone.now)
-#             return redirect("game:match_home")
-#     form = MatchForm()
-#     return render(request, "Games/match.html", {"form": form})
+def match(request, id):
+    match = Match.objects.filter(id=id).first()
+    return render(request, 'Games/id.html', {
+        'id': id,
+        'match':match
+    })
 
 
 def delete_game(request, id):
@@ -79,10 +74,13 @@ def match_home(request):
                 return redirect("game:match_home")
             password = form.cleaned_data.get('password')
             g = Game.objects.filter(id=game).first()
-            if g.is_active == False:
+            if g.status == 0:
                 return redirect("game:match_home")
+            match_id = Match.objects.all().order_by("-id").first().id
+            match_id+=1
             data = {
                 "action": 1,
+                "match": match_id,
                 "id1": id1,
                 "id2": id2,
                 "passwd": password
@@ -110,31 +108,28 @@ def match_home(request):
                             if result == 1:
                                 sync_to_async(Match(game_id=int(game), id_play1=id1, id_play2=id2, password=password,
                                                     date_create=datetime.now()).save())
-                                mmesg.success(request, "Create a successful game")
+                                mmesg.success(
+                                    request, "Create a successful game")
                                 sync_to_async(
                                     Notification(title=g.name, user_id_id=id1, ip=ip_connect, port=port_connect,
                                                  content="connect game %s with id match=%s, ip=%s, port=%s, path=%s" % (
                                                      g.name,
-                                                     Match.objects.filter(game_id=int(game), id_play1=id1, id_play2=id2,
-                                                                          password=password).first().id, ip_connect,
+                                                     match_id, ip_connect,
                                                      port_connect, path_connect)).save())
                                 sync_to_async(
                                     Notification(title=g.name, user_id_id=id2, ip=ip_connect, port=port_connect,
                                                  content="connect game %s with id match=%s, ip=%s, port=%s, path=%s" % (
-                                                     g.name,
-                                                     Match.objects.filter(game_id=int(game), id_play1=id1, id_play2=id2,
-                                                                          password=password).first().id, ip_connect,
+                                                     g.name, match_id, ip_connect,
                                                      port_connect, path_connect)).save())
                             await task
 
                     asyncio.run(connect())
-
+                    g.status = 0
+                    g.save()
 
                 except Exception as e:
                     print(e)
                     pass
-
-
 
             else:
                 try:
@@ -154,34 +149,28 @@ def match_home(request):
                             Notification(title=g.name, user_id_id=id1, passwd=password, ip=ip_connect,
                                          port=port_connect,
                                          content="connect game %s with id match=%s, ip=%s, port=%s, path=%s" % (g.name,
-                                                                                                                Match.objects.filter(
-                                                                                                                    game_id=int(
-                                                                                                                        game),
-                                                                                                                    id_play1=id1,
-                                                                                                                    id_play2=id2,
-                                                                                                                    password=password).first().id,
+                                                                                                                match_id,
                                                                                                                 ip_connect,
                                                                                                                 port_connect,
                                                                                                                 path_connect)).save()
                             Notification(title=g.name, user_id_id=id2, passwd=password, ip=ip_connect,
                                          port=port_connect,
                                          content="connect game %s with id match=%s, ip=%s, port=%s, path=%s" % (g.name,
-                                                                                                                Match.objects.filter(
-                                                                                                                    game_id=int(
-                                                                                                                        game),
-                                                                                                                    id_play1=id1,
-                                                                                                                    id_play2=id2,
-                                                                                                                    password=password).first().id,
+                                                                                                                match_id,
                                                                                                                 ip_connect,
                                                                                                                 port_connect,
                                                                                                                 path_connect)).save()
 
-
+                        g.status = 0
+                        g.save()
+                        req.close()
                     except:
+                        req.close()
                         mmesg.error(request, "Can't create match")
                     req.close()
                 except:
-                    mmesg.error(request, "Can't connect to ip %s port %s" % (g.ip, g.port))
+                    mmesg.error(
+                        request, "Can't connect to ip %s port %s" % (g.ip, g.port))
             return redirect("game:match_home")
     form = MatchForm()
     matchs = Match.objects.all().order_by("-date_create")
@@ -193,6 +182,40 @@ def match_home(request):
         matchs = matchs.filter(game=request.GET['id'])
     except:
         pass
+    for match in matchs:
+        if match.status == 1:
+            try:
+                start = time.time()
+                ip = Game.objects.filter(id=match.game_id).first().ip
+                port = Game.objects.filter(id=match.game_id).first().port
+
+                data = {
+                    "result": 2,  # result = 3 là thông báo ván đấu kết thúc
+                    # match sẽ là giá trị thông tin của match nào mà WS gửi lúc yêu cầu tạo match
+                    "match": match.id,
+                }
+                if ip[:5] == "ws://":
+                    address = f'%s:%s/' % (ip, port)
+                    try:
+                        async def hello():
+                            async with websockets.connect(address) as websocket:
+                                await websocket.send(json.dumps(data))
+                    
+
+                        asyncio.run(hello())
+                        if time.time() - start:
+                            break
+                    except Exception as e:
+                        print(e)
+                        break
+                else:
+                    req = remote(ip, port)
+                    req.send(json.dumps(data).encode())
+                    req.close()
+                    if time.time()-start:
+                        break
+            except:
+                pass
     paginator = Paginator(matchs, 9)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -221,5 +244,5 @@ def index(requeset):
 
 
 def notification(request):
-    noti = Notification.objects.filter(user_id=request.user.id)
+    noti = Notification.objects.filter(user_id=request.user.id).order_by('-id')
     return render(request, 'Games/notification.html', {"notis": noti})
